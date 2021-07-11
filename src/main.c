@@ -162,7 +162,29 @@ int main(int argc, char *argv[])
 						val++;
 
 					sprintf(name, val);
+					//FIXME: remove trailing bullshit..messy but works
 					if ((pos = strchr(name, '\n')) != NULL)
+						*pos = '\0';
+
+					if ((pos = strchr(name, '\t')) != NULL)
+						*pos = '\0';
+
+					if ((pos = strchr(name, ' ')) != NULL)
+						*pos = '\0';
+
+					if ((pos = strchr(name, '\b')) != NULL)
+						*pos = '\0';
+
+					if ((pos = strchr(name, '\a')) != NULL)
+						*pos = '\0';
+
+					if ((pos = strchr(name, '\r')) != NULL)
+						*pos = '\0';
+
+					if ((pos = strchr(name, '\f')) != NULL)
+						*pos = '\0';
+
+					if ((pos = strchr(name, '\v')) != NULL)
 						*pos = '\0';
 				}
 				fclose(fd);
