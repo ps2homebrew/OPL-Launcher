@@ -22,7 +22,7 @@ jobs:
 
     - name: Compile 
       run: |
-        make
+        make --trace
     
     - name: Get short SHA
       id: slug
@@ -32,7 +32,7 @@ jobs:
       if: ${{ success() }}
       uses: actions/upload-artifact@v2
       with:
-        name: MiniOPL-${{ steps.slug.outputs.sha8 }}
+        name: OPL-PATINFO-${{ steps.slug.outputs.sha8 }}
         path: OPL-Launcher.elf
 
     - name: Create release
