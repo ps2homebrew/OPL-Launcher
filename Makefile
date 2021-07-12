@@ -38,7 +38,7 @@ ps2fs.s:
 	bin2s $(PS2SDK)/iop/irx/ps2fs.irx asm/ps2fs.s ps2fs_irx
 
 ps2hdd.s:
-	bin2s $(PS2SDK)/iop/irx/ps2hdd.irx asm/ps2hdd.s ps2hdd_irx
+	bin2s $(PS2SDK)/iop/irx/ps2hdd-osd.irx asm/ps2hdd.s ps2hdd_irx
 
 iomanx.s:
 	bin2s $(PS2SDK)/iop/irx/iomanX.irx asm/iomanx.s iomanx_irx
