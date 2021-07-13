@@ -14,7 +14,7 @@ EE_OBJS = $(FRONTEND_OBJS) $(EECORE_OBJS)
 EE_LIBS = -lfileXio -lpatches -lelf-loader
 EE_LIB_DIRS += -L$(PS2SDK)/ee/lib
 EE_INCS += -I$(PS2SDK)/ports/include
-EE_CFLAGS := -O2 -G8192 -mgpopt
+EE_CFLAGS := -O2 -G8192 -mgpopt -Wno-stringop-truncation
 
 all:
 	@mkdir -p obj

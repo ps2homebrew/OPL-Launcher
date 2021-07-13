@@ -193,37 +193,19 @@ int main(int argc, char *argv[])
 		if (result == 0) {
 			FILE *fd = fopen("pfs0:OPL/conf_hdd.cfg", "rb");
 			if (fd != NULL) {
-				char *val, *pos;
+				char *val;
 				char line[128];
 				if (fgets(line, 128, fd) != NULL) {
 					if ((val = strchr(line, '=')) != NULL)
 						val++;
 
 					sprintf(name, val);
-					//FIXME: remove trailing bullshit..messy but works
-					if ((pos = strchr(name, '\n')) != NULL)
-						*pos = '\0';
+					//OPL adds windows CR+LF (0x0D 0x0A) .. remove that shiz from the string.. second check is 'just in case'
+					if ((val = strchr(name, '\r')) != NULL)
+						*val = '\0';
 
-					if ((pos = strchr(name, '\t')) != NULL)
-						*pos = '\0';
-
-					if ((pos = strchr(name, ' ')) != NULL)
-						*pos = '\0';
-
-					if ((pos = strchr(name, '\b')) != NULL)
-						*pos = '\0';
-
-					if ((pos = strchr(name, '\a')) != NULL)
-						*pos = '\0';
-
-					if ((pos = strchr(name, '\r')) != NULL)
-						*pos = '\0';
-
-					if ((pos = strchr(name, '\f')) != NULL)
-						*pos = '\0';
-
-					if ((pos = strchr(name, '\v')) != NULL)
-						*pos = '\0';
+					if ((val = strchr(name, '\n')) != NULL)
+						*val = '\0';
 				}
 				fclose(fd);
 
