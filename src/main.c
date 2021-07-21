@@ -110,143 +110,143 @@ static int hddGetHDLGameInfo(const char *partition, hdl_game_info_t *ginfo)
 
 static inline const char *GetMountParams(const char *command, char *BlockDevice)
 {
-	const char *MountPath;
-	int BlockDeviceNameLen;
+    const char *MountPath;
+    int BlockDeviceNameLen;
 
-	if ((MountPath=strchr(&command[5], ':')) != NULL) {
-		BlockDeviceNameLen = (unsigned int)MountPath - (unsigned int)command;
-		strncpy(BlockDevice, command, BlockDeviceNameLen);
-		BlockDevice[BlockDeviceNameLen] = '\0';
+    if ((MountPath = strchr(&command[5], ':')) != NULL) {
+        BlockDeviceNameLen = (unsigned int)MountPath - (unsigned int)command;
+        strncpy(BlockDevice, command, BlockDeviceNameLen);
+        BlockDevice[BlockDeviceNameLen] = '\0';
 
-		MountPath++; //This is the location of the mount path;
-	}
+        MountPath++; //This is the location of the mount path;
+    }
 
-	return MountPath;
+    return MountPath;
 }
 
 int main(int argc, char *argv[])
 {
-	char PartitionName[33], BlockDevice[38];
-	int result;
-	hdl_game_info_t GameInfo;
+    char PartitionName[33], BlockDevice[38];
+    int result;
+    hdl_game_info_t GameInfo;
 
-	SifInitRpc(0);
+    SifInitRpc(0);
 
-	/* Do as many things as possible while the IOP slowly resets itself. */
-	if (argc == 2) {
-		/* Argument 1 will contain the name of the partition containing the game. */
-		/* Unfortunately, it'll mean that some homebrew loader was most likely used to launch this program... and it might already have IOMANX loaded. That thing can't register devices that are added via IOMAN after it gets loaded.
+    /* Do as many things as possible while the IOP slowly resets itself. */
+    if (argc == 2) {
+        /* Argument 1 will contain the name of the partition containing the game. */
+        /* Unfortunately, it'll mean that some homebrew loader was most likely used to launch this program... and it might already have IOMANX loaded. That thing can't register devices that are added via IOMAN after it gets loaded.
 		Reset the IOP to clear out all these stupid homebrew modules... */
-		while(!SifIopReset(NULL, 0)){};
+        while (!SifIopReset(NULL, 0)) {};
 
-		if (strlen(argv[1]) <= 32) {
-			strncpy(PartitionName, argv[1], sizeof(PartitionName) - 1);
-			PartitionName[sizeof(PartitionName) - 1] = '\0';
-			result = 0;
-		} else
-			result = -1;
+        if (strlen(argv[1]) <= 32) {
+            strncpy(PartitionName, argv[1], sizeof(PartitionName) - 1);
+            PartitionName[sizeof(PartitionName) - 1] = '\0';
+            result = 0;
+        } else
+            result = -1;
 
-		while(!SifIopSync()){};
+        while (!SifIopSync()) {};
 
-		SifInitRpc(0);
+        SifInitRpc(0);
 
-		if (result < 0)
-			goto BootError;
-	} else {
-		if (GetMountParams(argv[0], BlockDevice) != NULL) {
-			strncpy(PartitionName, &BlockDevice[5], sizeof(PartitionName) - 1);
-			PartitionName[sizeof(PartitionName) - 1] = '\0';
-		} else
-			goto BootError;
-	}
+        if (result < 0)
+            goto BootError;
+    } else {
+        if (GetMountParams(argv[0], BlockDevice) != NULL) {
+            strncpy(PartitionName, &BlockDevice[5], sizeof(PartitionName) - 1);
+            PartitionName[sizeof(PartitionName) - 1] = '\0';
+        } else
+            goto BootError;
+    }
 
-	SifInitIopHeap();
-	SifLoadFileInit();
+    SifInitIopHeap();
+    SifLoadFileInit();
 
-	sbv_patch_enable_lmb(); 
+    sbv_patch_enable_lmb();
 
-	SifExecModuleBuffer(ps2dev9_irx, size_ps2dev9_irx, 0, NULL, NULL);
+    SifExecModuleBuffer(ps2dev9_irx, size_ps2dev9_irx, 0, NULL, NULL);
 
-	SifExecModuleBuffer(iomanx_irx, size_iomanx_irx, 0, NULL, NULL);
-	SifExecModuleBuffer(filexio_irx, size_filexio_irx, 0, NULL, NULL);
+    SifExecModuleBuffer(iomanx_irx, size_iomanx_irx, 0, NULL, NULL);
+    SifExecModuleBuffer(filexio_irx, size_filexio_irx, 0, NULL, NULL);
 
-	fileXioInit();
+    fileXioInit();
 
-	SifExecModuleBuffer(ps2atad_irx, size_ps2atad_irx, 0, NULL, NULL);
-	SifExecModuleBuffer(ps2hdd_irx, size_ps2hdd_irx, 0, NULL, NULL);
-	SifExecModuleBuffer(ps2fs_irx, size_ps2fs_irx, 0, NULL, NULL);
+    SifExecModuleBuffer(ps2atad_irx, size_ps2atad_irx, 0, NULL, NULL);
+    SifExecModuleBuffer(ps2hdd_irx, size_ps2hdd_irx, 0, NULL, NULL);
+    SifExecModuleBuffer(ps2fs_irx, size_ps2fs_irx, 0, NULL, NULL);
 
-	SifLoadFileExit();
-	SifExitIopHeap();
+    SifLoadFileExit();
+    SifExitIopHeap();
 
-	DPRINTF("Retrieving game information...\n");
+    DPRINTF("Retrieving game information...\n");
 
-	if ((result = hddGetHDLGameInfo(PartitionName, &GameInfo)) >= 0) {
-		char name[128];
-		char oplPartition[256];
-		char oplFilePath[256];
-		char *prefix = "pfs0:";
+    if ((result = hddGetHDLGameInfo(PartitionName, &GameInfo)) >= 0) {
+        char name[128];
+        char oplPartition[256];
+        char oplFilePath[256];
+        char *prefix = "pfs0:";
 
-		fileXioUmount("pfs0:");
+        fileXioUmount("pfs0:");
 
-		result = fileXioMount("pfs0:", "hdd0:__common", FIO_MT_RDWR);
-		if (result == 0) {
-			FILE *fd = fopen("pfs0:OPL/conf_hdd.cfg", "rb");
-			if (fd != NULL) {
-				char *val;
-				char line[128];
-				if (fgets(line, 128, fd) != NULL) {
-					if ((val = strchr(line, '=')) != NULL)
-						val++;
+        result = fileXioMount("pfs0:", "hdd0:__common", FIO_MT_RDWR);
+        if (result == 0) {
+            FILE *fd = fopen("pfs0:OPL/conf_hdd.cfg", "rb");
+            if (fd != NULL) {
+                char *val;
+                char line[128];
+                if (fgets(line, 128, fd) != NULL) {
+                    if ((val = strchr(line, '=')) != NULL)
+                        val++;
 
-					sprintf(name, val);
-					//OPL adds windows CR+LF (0x0D 0x0A) .. remove that shiz from the string.. second check is 'just in case'
-					if ((val = strchr(name, '\r')) != NULL)
-						*val = '\0';
+                    sprintf(name, val);
+                    //OPL adds windows CR+LF (0x0D 0x0A) .. remove that shiz from the string.. second check is 'just in case'
+                    if ((val = strchr(name, '\r')) != NULL)
+                        *val = '\0';
 
-					if ((val = strchr(name, '\n')) != NULL)
-						*val = '\0';
-				}
-				fclose(fd);
+                    if ((val = strchr(name, '\n')) != NULL)
+                        *val = '\0';
+                }
+                fclose(fd);
 
-			} else
-				sprintf(name, "+OPL");
+            } else
+                sprintf(name, "+OPL");
 
-			fileXioUmount("pfs0:");
-		} else
-			sprintf(name, "+OPL");
+            fileXioUmount("pfs0:");
+        } else
+            sprintf(name, "+OPL");
 
-		snprintf(oplPartition, sizeof(oplPartition), "hdd0:%s", name);
+        snprintf(oplPartition, sizeof(oplPartition), "hdd0:%s", name);
 
-		if (oplPartition[5] != '+')
-			prefix = "pfs0:OPL/";
+        if (oplPartition[5] != '+')
+            prefix = "pfs0:OPL/";
 
-		sprintf(oplFilePath, "%sOPNPS2LD.ELF", prefix);
+        sprintf(oplFilePath, "%sOPNPS2LD.ELF", prefix);
 
-		result = fileXioMount("pfs0:", oplPartition, FIO_MT_RDWR);
-		if (result == 0) {
-			char *boot_argv[4];
-			char start[128];
+        result = fileXioMount("pfs0:", oplPartition, FIO_MT_RDWR);
+        if (result == 0) {
+            char *boot_argv[4];
+            char start[128];
 
-			boot_argv[0] = GameInfo.startup;
-			sprintf(start, "%u", GameInfo.start_sector);
-			boot_argv[1] = start;
-			boot_argv[2] = name;
-			boot_argv[3] = "mini";
+            boot_argv[0] = GameInfo.startup;
+            sprintf(start, "%u", GameInfo.start_sector);
+            boot_argv[1] = start;
+            boot_argv[2] = name;
+            boot_argv[3] = "mini";
 
-			LoadELFFromFile(oplFilePath, 4, boot_argv); //args will be shifted +1 and oplFilePath will be the new argv0
-		}
-	}
+            LoadELFFromFile(oplFilePath, 4, boot_argv); //args will be shifted +1 and oplFilePath will be the new argv0
+        }
+    }
 
-	DPRINTF("Error loading game: %s, code: %d\n", PartitionName, result);
+    DPRINTF("Error loading game: %s, code: %d\n", PartitionName, result);
 
 BootError:
-	SifExitRpc();
+    SifExitRpc();
 
-	char *args[2];
-	args[0] = "BootError";
-	args[1] = NULL;
-	ExecOSD(1, args);
+    char *args[2];
+    args[0] = "BootError";
+    args[1] = NULL;
+    ExecOSD(1, args);
 
-	return 0;
+    return 0;
 }
