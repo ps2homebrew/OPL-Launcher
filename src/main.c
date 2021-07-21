@@ -181,7 +181,16 @@ int main(int argc, char *argv[])
 
     DPRINTF("Retrieving game information...\n");
 
-    if ((result = hddGetHDLGameInfo(PartitionName, &GameInfo)) >= 0) {
+    result = hddGetHDLGameInfo(PartitionName, &GameInfo);
+    if (result < 0) {
+        // some users use PP.<Partition> for storing game icons and settings
+        // for example BB.Navigator users and PSX DESR 1st gen (which just doesnt support PATINFO)
+        // they store game inside child partition: PC.<Partition>
+        PartitionName[1] = 'C';
+        result = hddGetHDLGameInfo(PartitionName, &GameInfo);
+    }
+
+    if (result >= 0) {
         char name[128];
         char oplPartition[256];
         char oplFilePath[256];
@@ -200,7 +209,7 @@ int main(int argc, char *argv[])
                         val++;
 
                     sprintf(name, val);
-                    //OPL adds windows CR+LF (0x0D 0x0A) .. remove that shiz from the string.. second check is 'just in case'
+                    // OPL adds windows CR+LF (0x0D 0x0A) .. remove that shiz from the string.. second check is 'just in case'
                     if ((val = strchr(name, '\r')) != NULL)
                         *val = '\0';
 
