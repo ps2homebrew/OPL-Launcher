@@ -20,10 +20,10 @@ jobs:
         git fetch --prune --unshallow
 
 
-    - name: Compile 
+    - name: Compile
       run: |
         make --trace
-    
+
     - name: Get short SHA
       id: slug
       run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
