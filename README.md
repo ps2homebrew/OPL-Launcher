@@ -9,8 +9,6 @@ You can inject OPL-Launcher into APA using i.e HDL Dump:
 hdl_dump.exe modify_header hdd<Disk Number>: <PP. Partition with PS2 game>
 ```
 
-
-
 To do so, You must also prepare few files for the injection process:
 
 1.  Signed executable which You can make by [this application](https://www.psx-place.com/resources/kelftool-fmcb-compatible-fork.1104/)
