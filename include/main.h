@@ -20,6 +20,7 @@
 #include <fileio.h>
 #include <fileXio_rpc.h>
 #include <io_common.h>
+#include <iox_stat.h>
 
 #ifdef __EESIO_DEBUG
 #include <sio.h>
@@ -34,8 +35,6 @@
 
 #define PS2PART_IDMAX        32
 #define HDL_GAME_NAME_MAX    64
-#define APA_FLAG_SUB         0x0001
-#define HDL_FS_MAGIC         0x1337
 #define HDL_GAME_DATA_OFFSET 0x100000 /* Sector 0x800 in the user data area. */
 
 typedef struct
