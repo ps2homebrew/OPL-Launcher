@@ -82,6 +82,16 @@ static inline const char *GetMountParams(const char *command, char *BlockDevice)
     return MountPath;
 }
 
+static inline void BootError(void)
+{
+    SifExitRpc();
+
+    char *args[2];
+    args[0] = "BootError";
+    args[1] = NULL;
+    ExecOSD(1, args);
+}
+
 int main(int argc, char *argv[])
 {
     char PartitionName[33], BlockDevice[38];
@@ -109,13 +119,13 @@ int main(int argc, char *argv[])
         SifInitRpc(0);
 
         if (result < 0)
-            goto BootError;
+            BootError();
     } else {
         if (GetMountParams(argv[0], BlockDevice) != NULL) {
             strncpy(PartitionName, &BlockDevice[5], sizeof(PartitionName) - 1);
             PartitionName[sizeof(PartitionName) - 1] = '\0';
         } else
-            goto BootError;
+            BootError();
     }
 
     SifInitIopHeap();
@@ -210,13 +220,7 @@ int main(int argc, char *argv[])
 
     DPRINTF("Error loading game: %s, code: %d\n", PartitionName, result);
 
-BootError:
-    SifExitRpc();
-
-    char *args[2];
-    args[0] = "BootError";
-    args[1] = NULL;
-    ExecOSD(1, args);
+    BootError();
 
     return 0;
 }
