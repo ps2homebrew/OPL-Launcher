@@ -185,8 +185,9 @@ int main(int argc, char *argv[])
     if (result < 0) {
         // some users use PP.<Partition> for storing game icons and settings
         // for example BB.Navigator users and PSX DESR 1st gen (which just doesnt support PATINFO)
-        // they store game inside child partition: PC.<Partition>
-        PartitionName[1] = 'C';
+        // they store game inside hidden partition: __.<Partition>
+        PartitionName[0] = '_';
+        PartitionName[1] = '_';
         result = hddGetHDLGameInfo(PartitionName, &GameInfo);
     }
 
