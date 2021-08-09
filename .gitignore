@@ -1,5 +1,5 @@
 #
-# NOTE! Please use 'git ls-files -i --exclude-standard -с'
+# NOTE! Please use 'git ls-files -i --exclude-standard -c'
 # command after changing this file, to see if there are
 # any tracked files which get ignored after the change.
 #
@@ -21,6 +21,8 @@
 *.zip
 *.ZIP
 *.a
+obj/
+asm/
 
 #
 # files that we don't want to ignore
