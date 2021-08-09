@@ -17,14 +17,14 @@ EE_INCS += -I$(PS2SDK)/ports/include
 EE_CFLAGS := -O2 -G8192 -mgpopt -Wno-stringop-truncation
 
 all:
-	@mkdir -p obj
-	@mkdir -p asm
+	@mkdir -p $(EE_OBJS_DIR)
+	@mkdir -p $(EE_ASM_DIR)
 
 	echo "Building OPL Launcher..."
 	$(MAKE) $(EE_BIN)
 
 clean:
-	rm -f $(EE_BIN) $(EE_OBJS) asm/*.*
+	rm -f -r $(EE_OBJS_DIR) $(EE_ASM_DIR) $(EE_BIN)
 
 rebuild: clean all
 
