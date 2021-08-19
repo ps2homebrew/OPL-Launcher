@@ -92,6 +92,42 @@ static inline void BootError(void)
     ExecOSD(1, args);
 }
 
+static int findOPLPart(const char *name)
+{
+    int result;
+
+    fileXioUmount("pfs0:");
+    result = fileXioMount("pfs0:", "hdd0:__common", FIO_MT_RDWR);
+    if (result == 0) {
+        FILE *fd = fopen("pfs0:OPL/conf_hdd.cfg", "rb");
+        if (fd != NULL) {
+            char *val;
+            char line[128];
+            if (fgets(line, 128, fd) != NULL) {
+                if ((val = strchr(line, '=')) != NULL) {
+                    val++;
+
+                    snprintf(name, sizeof(name), val);
+                    // OPL adds windows CR+LF (0x0D 0x0A) .. remove that shiz from the string.. second check is 'just in case'
+                    if ((val = strchr(name, '\r')) != NULL)
+                        *val = '\0';
+
+                    if ((val = strchr(name, '\n')) != NULL)
+                        *val = '\0';
+                } else
+                    result = -1;
+            } else
+                result = -1;
+
+            fclose(fd);
+
+        } else
+            result = -1;
+    }
+
+    return result;
+}
+
 int main(int argc, char *argv[])
 {
     char PartitionName[33], BlockDevice[38];
@@ -134,7 +170,6 @@ int main(int argc, char *argv[])
     sbv_patch_enable_lmb();
 
     SifExecModuleBuffer(ps2dev9_irx, size_ps2dev9_irx, 0, NULL, NULL);
-
     SifExecModuleBuffer(iomanx_irx, size_iomanx_irx, 0, NULL, NULL);
     SifExecModuleBuffer(filexio_irx, size_filexio_irx, 0, NULL, NULL);
 
@@ -165,51 +200,26 @@ int main(int argc, char *argv[])
         char oplFilePath[256];
         char *prefix = "pfs0:";
 
-        fileXioUmount("pfs0:");
-
-        result = fileXioMount("pfs0:", "hdd0:__common", FIO_MT_RDWR);
-        if (result == 0) {
-            FILE *fd = fopen("pfs0:OPL/conf_hdd.cfg", "rb");
-            if (fd != NULL) {
-                char *val;
-                char line[128];
-                if (fgets(line, 128, fd) != NULL) {
-                    if ((val = strchr(line, '=')) != NULL)
-                        val++;
-
-                    sprintf(name, val);
-                    // OPL adds windows CR+LF (0x0D 0x0A) .. remove that shiz from the string.. second check is 'just in case'
-                    if ((val = strchr(name, '\r')) != NULL)
-                        *val = '\0';
-
-                    if ((val = strchr(name, '\n')) != NULL)
-                        *val = '\0';
-                } else
-                    sprintf(name, "+OPL");
-
-                fclose(fd);
-
-            } else
-                sprintf(name, "+OPL");
-
-            fileXioUmount("pfs0:");
-        } else
-            sprintf(name, "+OPL");
+        result = findOPLPart(name);
+        if (result != 0)
+            snprintf(name, sizeof(name), "+OPL");
 
         snprintf(oplPartition, sizeof(oplPartition), "hdd0:%s", name);
 
         if (oplPartition[5] != '+')
             prefix = "pfs0:OPL/";
 
-        sprintf(oplFilePath, "%sOPNPS2LD.ELF", prefix);
+        snprintf(oplFilePath, sizeof(oplFilePath), "%sOPNPS2LD.ELF", prefix);
 
+        fileXioUmount("pfs0:");
         result = fileXioMount("pfs0:", oplPartition, FIO_MT_RDWR);
         if (result == 0) {
             char *boot_argv[4];
             char start[128];
 
+            snprintf(start, sizeof(start), "%u", GameInfo.start_sector);
+
             boot_argv[0] = GameInfo.startup;
-            sprintf(start, "%u", GameInfo.start_sector);
             boot_argv[1] = start;
             boot_argv[2] = name;
             boot_argv[3] = "mini";
