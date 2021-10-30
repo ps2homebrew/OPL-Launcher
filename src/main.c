@@ -55,8 +55,7 @@ static int hddGetHDLGameInfo(const char *partition, hdl_game_info_t *ginfo)
             ginfo->layer_break = hdl_header->layer1_start;
             ginfo->disctype = hdl_header->discType;
             ginfo->start_sector = PartStat.private_5 + (HDL_GAME_DATA_OFFSET + 4096) / 512; /* Note: The APA specification states that there is a 4KB area used for storing the partition's information, before the extended attribute area. */
-            ginfo->total_size_in_kb = size / 2;
-            ginfo->magic=hdl_header->magic;
+            ginfo->total_size_in_kb = size / 2;         
 
         } else
             ret = -1;
@@ -207,7 +206,7 @@ int main(int argc, char *argv[])
 
         result = fileXioMount("pfs0:", oplPartition, FIO_MT_RDWR);
         if (result == 0) {
-            if(GameInfo.magic== 0xdeadfeed){
+            if(strncmp ( PartitionName, "PP.OPL", 6)){
                 char *boot_argv[4];
                 char start[128];
 
