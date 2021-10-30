@@ -37,10 +37,8 @@ static int hddGetHDLGameInfo(const char *partition, hdl_game_info_t *ginfo)
         if (ret == 1024) {
             fileXioGetStat(PathToPart, &PartStat);
 
-            hdl_apa_header *hdl_header = (hdl_apa_header *)buf;
+            hdl_apa_header *hdl_header = (hdl_apa_header *)buf;     
             
-            
-
             // calculate total size
             size = PartStat.size;
 
@@ -210,24 +208,22 @@ int main(int argc, char *argv[])
         result = fileXioMount("pfs0:", oplPartition, FIO_MT_RDWR);
         if (result == 0) {
             if(GameInfo.magic== 0xdeadfeed){
-            char *boot_argv[4];
-            char start[128];
+                char *boot_argv[4];
+                char start[128];
 
-            boot_argv[0] = GameInfo.startup;
-            sprintf(start, "%u", GameInfo.start_sector);
-            boot_argv[1] = start;
-            boot_argv[2] = name;
-            boot_argv[3] = "mini";
+                boot_argv[0] = GameInfo.startup;
+                sprintf(start, "%u", GameInfo.start_sector);
+                boot_argv[1] = start;
+                boot_argv[2] = name;
+                boot_argv[3] = "mini";
 
-            LoadELFFromFile(oplFilePath, 4, boot_argv); //args will be shifted +1 and oplFilePath will be the new argv0
+                LoadELFFromFile(oplFilePath, 4, boot_argv); //args will be shifted +1 and oplFilePath will be the new argv0
             }
             else
-            LoadELFFromFile(oplFilePath, 0, NULL);
+                LoadELFFromFile(oplFilePath, 0, NULL);
         }
-    }
+    } 
     
-    	
-
     DPRINTF("Error loading game: %s, code: %d\n", PartitionName, result);
 
     BootError();
