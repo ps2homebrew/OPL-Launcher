@@ -38,8 +38,6 @@ static int hddGetHDLGameInfo(const char *partition, hdl_game_info_t *ginfo)
             fileXioGetStat(PathToPart, &PartStat);
 
             hdl_apa_header *hdl_header = (hdl_apa_header *)buf;
-            
-            
 
             // calculate total size
             size = PartStat.size;
@@ -58,8 +56,6 @@ static int hddGetHDLGameInfo(const char *partition, hdl_game_info_t *ginfo)
             ginfo->disctype = hdl_header->discType;
             ginfo->start_sector = PartStat.private_5 + (HDL_GAME_DATA_OFFSET + 4096) / 512; /* Note: The APA specification states that there is a 4KB area used for storing the partition's information, before the extended attribute area. */
             ginfo->total_size_in_kb = size / 2;
-            ginfo->magic=hdl_header->magic;
-
         } else
             ret = -1;
     } else
@@ -209,7 +205,6 @@ int main(int argc, char *argv[])
 
         result = fileXioMount("pfs0:", oplPartition, FIO_MT_RDWR);
         if (result == 0) {
-            if(GameInfo.magic== 0xdeadfeed){
             char *boot_argv[4];
             char start[128];
 
@@ -220,13 +215,8 @@ int main(int argc, char *argv[])
             boot_argv[3] = "mini";
 
             LoadELFFromFile(oplFilePath, 4, boot_argv); //args will be shifted +1 and oplFilePath will be the new argv0
-            }
-            else
-            LoadELFFromFile(oplFilePath, 0, NULL);
         }
     }
-    
-    	
 
     DPRINTF("Error loading game: %s, code: %d\n", PartitionName, result);
 
