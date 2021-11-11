@@ -50,6 +50,7 @@ typedef struct
     int disctype;
     u32 start_sector;
     u32 total_size_in_kb;
+    u32 magic;
 } hdl_game_info_t;
 
 typedef struct // size = 1024
