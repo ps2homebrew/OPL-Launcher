@@ -42,6 +42,12 @@ static int hddGetHDLGameInfo(const char *partition, hdl_game_info_t *ginfo)
             // calculate total size
             size = PartStat.size;
 
+            // determine if partition has file system
+            if(PartStat.mode == FS_TYPE_PFS)
+                ginfo->is_pfs=1;
+            else
+                ginfo->is_pfs=0;
+
             strncpy(ginfo->partition_name, partition, sizeof(ginfo->partition_name) - 1);
             ginfo->partition_name[sizeof(ginfo->partition_name) - 1] = '\0';
             strncpy(ginfo->name, hdl_header->gamename, sizeof(ginfo->name) - 1);
@@ -205,16 +211,20 @@ int main(int argc, char *argv[])
 
         result = fileXioMount("pfs0:", oplPartition, FIO_MT_RDWR);
         if (result == 0) {
-            char *boot_argv[4];
-            char start[128];
+            if(!GameInfo.is_pfs){
+                char *boot_argv[4];
+                char start[128];
 
-            boot_argv[0] = GameInfo.startup;
-            sprintf(start, "%u", GameInfo.start_sector);
-            boot_argv[1] = start;
-            boot_argv[2] = name;
-            boot_argv[3] = "mini";
+                boot_argv[0] = GameInfo.startup;
+                sprintf(start, "%u", GameInfo.start_sector);
+                boot_argv[1] = start;
+                boot_argv[2] = name;
+                boot_argv[3] = "mini";
 
-            LoadELFFromFile(oplFilePath, 4, boot_argv); //args will be shifted +1 and oplFilePath will be the new argv0
+                LoadELFFromFile(oplFilePath, 4, boot_argv); //args will be shifted +1 and oplFilePath will be the new argv0
+            }
+            else
+                 LoadELFFromFile(oplFilePath, 0, NULL);
         }
     }
 
