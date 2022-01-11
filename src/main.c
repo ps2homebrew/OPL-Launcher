@@ -98,8 +98,12 @@ static inline void BootError(void)
 int main(int argc, char *argv[])
 {
     char PartitionName[33], BlockDevice[38];
-    int result;
+    int result, is_Game = 0;
     hdl_game_info_t GameInfo;
+    char name[128];
+    char oplPartition[256];
+    char oplFilePath[256];
+    char *prefix = "pfs0:";
 
     SifInitRpc(0);
 
@@ -150,14 +154,22 @@ int main(int argc, char *argv[])
     SifLoadFileExit();
     SifExitIopHeap();
 
+    fileXioUmount("pfs0:");
+
     DPRINTF("Retrieving game information...\n");
 
-    char name[128];
-    char oplPartition[256];
-    char oplFilePath[256];
-    char *prefix = "pfs0:";
-
-    fileXioUmount("pfs0:");
+    result = hddGetHDLGameInfo(PartitionName, &GameInfo);
+    if (result < 0) {
+        // some users use PP.<Partition> for storing game icons and settings
+        // for example BB.Navigator users and PSX DESR 1st gen (which just doesnt support PATINFO)
+        // they store game inside hidden partition: __.<Partition>
+        PartitionName[0] = '_';
+        PartitionName[1] = '_';
+        result = hddGetHDLGameInfo(PartitionName, &GameInfo);
+        if (result >= 0)
+            is_Game = 1;
+    } else
+        is_Game = 1;
 
     result = fileXioMount("pfs0:", "hdd0:__common", FIO_MT_RDWR);
     if (result == 0) {
@@ -197,17 +209,7 @@ int main(int argc, char *argv[])
 
     result = fileXioMount("pfs0:", oplPartition, FIO_MT_RDWR);
     if (result == 0) {
-        result = hddGetHDLGameInfo(PartitionName, &GameInfo);
-        if (result < 0) {
-            // some users use PP.<Partition> for storing game icons and settings
-            // for example BB.Navigator users and PSX DESR 1st gen (which just doesnt support PATINFO)
-            // they store game inside hidden partition: __.<Partition>
-            PartitionName[0] = '_';
-            PartitionName[1] = '_';
-            result = hddGetHDLGameInfo(PartitionName, &GameInfo);
-        }
-
-        if (result >= 0) {
+        if (is_Game) {
 
             char *boot_argv[4];
             char start[128];
