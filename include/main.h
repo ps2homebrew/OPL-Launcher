@@ -13,7 +13,6 @@
 #include <sbv_patches.h>
 #include <malloc.h>
 #include <hdd-ioctl.h>
-#include <libhdd.h>
 #include <elf-loader.h>
 
 #define NEWLIB_PORT_AWARE
@@ -50,7 +49,6 @@ typedef struct
     int disctype;
     u32 start_sector;
     u32 total_size_in_kb;
-    u8  is_pfs;
 } hdl_game_info_t;
 
 typedef struct // size = 1024

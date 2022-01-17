@@ -21,7 +21,6 @@ extern unsigned int size_ps2fs_irx;
 static int hddGetHDLGameInfo(const char *partition, hdl_game_info_t *ginfo)
 {
     u32 size;
-    static char buf[1024] ALIGNED(64);
     int fd, ret;
     iox_stat_t PartStat;
     char *PathToPart;
@@ -30,6 +29,7 @@ static int hddGetHDLGameInfo(const char *partition, hdl_game_info_t *ginfo)
     sprintf(PathToPart, "hdd0:%s", partition);
 
     if ((fd = open(PathToPart, O_RDONLY, 0666)) >= 0) {
+        static char buf[1024] ALIGNED(64);
         lseek(fd, HDL_GAME_DATA_OFFSET, SEEK_SET);
         ret = read(fd, buf, 1024);
         close(fd);
@@ -37,31 +37,29 @@ static int hddGetHDLGameInfo(const char *partition, hdl_game_info_t *ginfo)
         if (ret == 1024) {
             fileXioGetStat(PathToPart, &PartStat);
 
-            hdl_apa_header *hdl_header = (hdl_apa_header *)buf;
+            // determine if partition is of HDL type
+            if (PartStat.mode == 0x1337) {
+                hdl_apa_header *hdl_header = (hdl_apa_header *)buf;
 
-            // calculate total size
-            size = PartStat.size;
+                // calculate total size
+                size = PartStat.size;
 
-            // determine if partition has file system
-            if(PartStat.mode == FS_TYPE_PFS)
-                ginfo->is_pfs=1;
-            else
-                ginfo->is_pfs=0;
-
-            strncpy(ginfo->partition_name, partition, sizeof(ginfo->partition_name) - 1);
-            ginfo->partition_name[sizeof(ginfo->partition_name) - 1] = '\0';
-            strncpy(ginfo->name, hdl_header->gamename, sizeof(ginfo->name) - 1);
-            ginfo->name[sizeof(ginfo->name) - 1] = '\0';
-            strncpy(ginfo->startup, hdl_header->startup, sizeof(ginfo->startup) - 1);
-            ginfo->startup[sizeof(ginfo->startup) - 1] = '\0';
-            ginfo->hdl_compat_flags = hdl_header->hdl_compat_flags;
-            ginfo->ops2l_compat_flags = hdl_header->ops2l_compat_flags;
-            ginfo->dma_type = hdl_header->dma_type;
-            ginfo->dma_mode = hdl_header->dma_mode;
-            ginfo->layer_break = hdl_header->layer1_start;
-            ginfo->disctype = hdl_header->discType;
-            ginfo->start_sector = PartStat.private_5 + (HDL_GAME_DATA_OFFSET + 4096) / 512; /* Note: The APA specification states that there is a 4KB area used for storing the partition's information, before the extended attribute area. */
-            ginfo->total_size_in_kb = size / 2;
+                strncpy(ginfo->partition_name, partition, sizeof(ginfo->partition_name) - 1);
+                ginfo->partition_name[sizeof(ginfo->partition_name) - 1] = '\0';
+                strncpy(ginfo->name, hdl_header->gamename, sizeof(ginfo->name) - 1);
+                ginfo->name[sizeof(ginfo->name) - 1] = '\0';
+                strncpy(ginfo->startup, hdl_header->startup, sizeof(ginfo->startup) - 1);
+                ginfo->startup[sizeof(ginfo->startup) - 1] = '\0';
+                ginfo->hdl_compat_flags = hdl_header->hdl_compat_flags;
+                ginfo->ops2l_compat_flags = hdl_header->ops2l_compat_flags;
+                ginfo->dma_type = hdl_header->dma_type;
+                ginfo->dma_mode = hdl_header->dma_mode;
+                ginfo->layer_break = hdl_header->layer1_start;
+                ginfo->disctype = hdl_header->discType;
+                ginfo->start_sector = PartStat.private_5 + (HDL_GAME_DATA_OFFSET + 4096) / 512; /* Note: The APA specification states that there is a 4KB area used for storing the partition's information, before the extended attribute area. */
+                ginfo->total_size_in_kb = size / 2;
+            } else
+                ret = -1;
         } else
             ret = -1;
     } else
@@ -75,14 +73,13 @@ static int hddGetHDLGameInfo(const char *partition, hdl_game_info_t *ginfo)
 static inline const char *GetMountParams(const char *command, char *BlockDevice)
 {
     const char *MountPath;
-    int BlockDeviceNameLen;
 
     if ((MountPath = strchr(&command[5], ':')) != NULL) {
-        BlockDeviceNameLen = (unsigned int)MountPath - (unsigned int)command;
+        int BlockDeviceNameLen = (unsigned int)MountPath - (unsigned int)command;
         strncpy(BlockDevice, command, BlockDeviceNameLen);
         BlockDevice[BlockDeviceNameLen] = '\0';
 
-        MountPath++; //This is the location of the mount path;
+        MountPath++; // This is the location of the mount path;
     }
 
     return MountPath;
@@ -101,13 +98,17 @@ static inline void BootError(void)
 int main(int argc, char *argv[])
 {
     char PartitionName[33], BlockDevice[38];
-    int result;
+    int result, is_Game = 0;
     hdl_game_info_t GameInfo;
+    char name[128];
+    char oplPartition[256];
+    char oplFilePath[256];
+    char *prefix = "pfs0:";
 
     SifInitRpc(0);
 
     /* Do as many things as possible while the IOP slowly resets itself. */
-    if (argc == 2) {
+    if (argc > 1) {
         /* Argument 1 will contain the name of the partition containing the game. */
         /* Unfortunately, it'll mean that some homebrew loader was most likely used to launch this program... and it might already have IOMANX loaded. That thing can't register devices that are added via IOMAN after it gets loaded. */
         /* Reset the IOP to clear out all these stupid homebrew modules... */
@@ -153,6 +154,8 @@ int main(int argc, char *argv[])
     SifLoadFileExit();
     SifExitIopHeap();
 
+    fileXioUmount("pfs0:");
+
     DPRINTF("Retrieving game information...\n");
 
     result = hddGetHDLGameInfo(PartitionName, &GameInfo);
@@ -163,69 +166,64 @@ int main(int argc, char *argv[])
         PartitionName[0] = '_';
         PartitionName[1] = '_';
         result = hddGetHDLGameInfo(PartitionName, &GameInfo);
-    }
+        if (result >= 0)
+            is_Game = 1;
+    } else
+        is_Game = 1;
 
-    if (result >= 0) {
-        char name[128];
-        char oplPartition[256];
-        char oplFilePath[256];
-        char *prefix = "pfs0:";
-
-        fileXioUmount("pfs0:");
-
-        result = fileXioMount("pfs0:", "hdd0:__common", FIO_MT_RDWR);
-        if (result == 0) {
-            FILE *fd = fopen("pfs0:OPL/conf_hdd.cfg", "rb");
-            if (fd != NULL) {
+    result = fileXioMount("pfs0:", "hdd0:__common", FIO_MT_RDWR);
+    if (result == 0) {
+        FILE *fd = fopen("pfs0:OPL/conf_hdd.cfg", "rb");
+        if (fd != NULL) {
+            char line[128];
+            if (fgets(line, 128, fd) != NULL) {
                 char *val;
-                char line[128];
-                if (fgets(line, 128, fd) != NULL) {
-                    if ((val = strchr(line, '=')) != NULL)
-                        val++;
+                if ((val = strchr(line, '=')) != NULL)
+                    val++;
 
-                    sprintf(name, val);
-                    // OPL adds windows CR+LF (0x0D 0x0A) .. remove that shiz from the string.. second check is 'just in case'
-                    if ((val = strchr(name, '\r')) != NULL)
-                        *val = '\0';
+                sprintf(name, val);
+                // OPL adds windows CR+LF (0x0D 0x0A) .. remove that shiz from the string.. second check is 'just in case'
+                if ((val = strchr(name, '\r')) != NULL)
+                    *val = '\0';
 
-                    if ((val = strchr(name, '\n')) != NULL)
-                        *val = '\0';
-                } else
-                    sprintf(name, "+OPL");
-
-                fclose(fd);
-
+                if ((val = strchr(name, '\n')) != NULL)
+                    *val = '\0';
             } else
                 sprintf(name, "+OPL");
 
-            fileXioUmount("pfs0:");
+            fclose(fd);
+
         } else
             sprintf(name, "+OPL");
 
-        snprintf(oplPartition, sizeof(oplPartition), "hdd0:%s", name);
+        fileXioUmount("pfs0:");
+    } else
+        sprintf(name, "+OPL");
 
-        if (oplPartition[5] != '+')
-            prefix = "pfs0:OPL/";
+    snprintf(oplPartition, sizeof(oplPartition), "hdd0:%s", name);
 
-        sprintf(oplFilePath, "%sOPNPS2LD.ELF", prefix);
+    if (oplPartition[5] != '+')
+        prefix = "pfs0:OPL/";
 
-        result = fileXioMount("pfs0:", oplPartition, FIO_MT_RDWR);
-        if (result == 0) {
-            if(!GameInfo.is_pfs){
-                char *boot_argv[4];
-                char start[128];
+    sprintf(oplFilePath, "%sOPNPS2LD.ELF", prefix);
 
-                boot_argv[0] = GameInfo.startup;
-                sprintf(start, "%u", GameInfo.start_sector);
-                boot_argv[1] = start;
-                boot_argv[2] = name;
-                boot_argv[3] = "mini";
+    result = fileXioMount("pfs0:", oplPartition, FIO_MT_RDWR);
+    if (result == 0) {
+        if (is_Game) {
 
-                LoadELFFromFile(oplFilePath, 4, boot_argv); //args will be shifted +1 and oplFilePath will be the new argv0
-            }
-            else
-                 LoadELFFromFile(oplFilePath, 0, NULL);
-        }
+            char *boot_argv[4];
+            char start[128];
+
+            boot_argv[0] = GameInfo.startup;
+            sprintf(start, "%u", GameInfo.start_sector);
+            boot_argv[1] = start;
+            boot_argv[2] = name;
+            boot_argv[3] = "mini";
+
+            LoadELFFromFile(oplFilePath, 4, boot_argv); // args will be shifted +1 and oplFilePath will be the new argv0
+        } else
+            // if both partition candidates PP. and __. doesnt have HDL game type try to boot opl with no arguments
+            LoadELFFromFile(oplFilePath, 0, NULL);
     }
 
     DPRINTF("Error loading game: %s, code: %d\n", PartitionName, result);
